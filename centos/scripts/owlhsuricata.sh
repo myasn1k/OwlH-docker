@@ -2,13 +2,13 @@
 
 # Main packages 
 yum -y install epel-release wget git
-yum -y install jq openssl-devel PyYAML lz4-devel gcc libpcap-devel pcre-devel libyaml-devel file-devel zlib-devel jansson-devel nss-devel libcap-ng-devel libnet-devel tar make libnetfilter_queue-devel lua-devel cmake make gcc-c++ flex bison python-devel swig 
+yum -y install jq openssl-devel PyYAML lz4-devel gcc libpcap-devel pcre-devel libyaml-devel file-devel zlib-devel jansson-devel nss-devel libcap-ng-devel libnet-devel tar make libnetfilter_queue-devel lua-devel cmake make gcc-c++ flex bison python-devel swig rustc cargo
 
 # SURICATA
 cd /tmp
-wget https://www.openinfosecfoundation.org/download/suricata-4.1.4.tar.gz
-tar xzvf suricata-4.1.4.tar.gz
-cd /tmp/suricata-4.1.4
+wget https://www.openinfosecfoundation.org/download/suricata-5.0.0.tar.gz
+tar xzvf suricata-5.0.0.tar.gz
+cd /tmp/suricata-5.0.0
 ./configure --libdir=/usr/lib64 --prefix=/usr --sysconfdir=/etc --localstatedir=/var --enable-nfqueue --enable-lua
 make
 make install
@@ -1968,115 +1968,3 @@ reference-config-file: /etc/suricata/reference.config
 #include: owlh.yaml
 EOF
 
-cat > /usr/local/owlh/src/owlhnode/conf/suricata-init.conf <<\EOF
-INTERFACE="owlh"
-EOF
-
-
-cat >> /etc/inittab << \EOF
-owlhsuricata:2345:respawn:/usr/local/owlh/bin/manage-suricata.sh
-EOF
-
-cat > /etc/init.d/owlhsuricata << \EOF
-#!/bin/sh
-
-# Copyright (C) 2019, OwlH.net
-# OwlH suricata: controls suricata Service
-# Author:       owlh team <support@olwh.net>
-#
-# chkconfig: 2345 99 15
-# description: starts and stop suricata
-#
-
-# Source function library.
-export LANG=C
-
-start() {
-    echo -n "Starting OwlH Suricata: "
-    /usr/local/owlh/bin/manage-suricata.sh start > /dev/null 
-    RETVAL=$?
-    if [ $RETVAL -eq 0 ]; then
-        echo "success"
-    else
-        echo "failure"
-    fi
-    echo
-    return $RETVAL
-}
-
-stop() {
-    echo -n "Stopping OwlH Suricata : "
-    /usr/local/owlh/bin/manage-suricata.sh stop > /dev/null
-    RETVAL=$?
-    if [ $RETVAL -eq 0 ]; then
-        echo "success"
-    else
-        echo "failure"
-    fi
-    echo
-    return $RETVAL
-}
-
-status() {
-    /usr/local/owlh/bin/manage-suricata.sh status
-    RETVAL=$?
-    return $RETVAL
-}
-
-case "$1" in
-start)
-    start
-    ;;
-stop)
-    stop
-    ;;
-restart)
-    stop
-    start
-    ;;
-status)
-    status
-    ;;
-*)
-    echo "*** Usage: owlhsuricata {start|stop|restart|status}"
-    exit 1
-esac
-
-exit $?
-EOF
-
-chmod +x /etc/init.d/owlhsuricata
-
-cat > /usr/local/owlh/bin/manage-suricata.sh <<\EOF
-#!/bin/bash
-case "$1" in
-start)
-  source /usr/local/owlh/src/owlhnode/conf/suricata-init.conf
-  /usr/bin/suricata -c /etc/suricata/suricata.yaml -i $INTERFACE >> /dev/null 2>&1 &
-  ;;
-stop)
-  if [ $(pidof suricata) ] ; then
-     kill -9 $(pidof suricata)
-  fi
-  ;;
-status)
-  echo -n "OwlH Suricata status -> "
-  if [ $(pidof suricata) ] ; then
-     echo -e "\e[92mRunning\e[0m"
-     exit 0
-  else
-     echo -e "\e[91mNot running\e[0m"
-     exit 1
-  fi
-esac
-
-exit $?
-
-
-EOF
-
-chmod +x /usr/local/owlh/bin/manage-suricata.sh
-
-#chkconfig --add owlhsuricata
-#chkconfig owlhsuricata on
-#service owlhsuricata start 

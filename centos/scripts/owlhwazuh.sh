@@ -1,5 +1,5 @@
 MANAGER_IP="MANAGER_IP"
-#source env.conf
+source env.conf
 
 rpm --import http://packages.wazuh.com/key/GPG-KEY-WAZUH
 cat > /etc/yum.repos.d/wazuh.repo <<\EOF

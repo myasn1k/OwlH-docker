@@ -1,5 +1,3 @@
-ARG distro=centos
-
 ###############################################################################
 # MULTI-STAGE BUILD: BASE
 ################################################################################
@@ -23,23 +21,24 @@ RUN yum -y install git jq gcc PyYAML tar make cmake gcc-c++ flex bison swig \
 ################################################################################
 FROM builder as suricata
 
-COPY ["owlhsuricata.sh", "/tmp/"]
+COPY ["scripts/owlhsuricata.sh", "/tmp/"]
 
 RUN mkdir -p /usr/local/owlh/bin /usr/local/owlh/src/owlhnode \
  && cd /tmp \
  && chmod +x owlhsuricata.sh \
  && ./owlhsuricata.sh \
  && cd / \
- && tar czvf /tmp/suricata.tar.gz \
+ && tar czvf /tmp/suricata.tar.gz /var/log/suricata/ \
              /etc/suricata /usr/lib/python2.7/site-packages/suricata* \
-             /usr/share/man/man1/suricata.1 /usr/share/doc/suricata /usr/bin/suricata*
+             /usr/share/man/man1/suricata.1 /usr/share/doc/suricata   \
+             /usr/bin/suricata* /usr/lib64/libhtp.* /usr/lib64/libnet*
 
 ################################################################################
 # MULTI-STAGE BUILD: ZEEK
 ################################################################################
 FROM builder as zeek
 
-COPY [ "owlhzeek.sh", "/tmp/" ]
+COPY [ "scripts/owlhzeek.sh", "/tmp/" ]
 
 RUN cd /tmp \
  && chmod +x owlhzeek.sh \
@@ -51,27 +50,51 @@ RUN cd /tmp \
 ################################################################################
 FROM base
 
-ARG OWLH_NODE_URL=http://repo.owlh.net/current-centos/owlhnode.tar.gz
-
-COPY [ "owlhwazuh.sh", "/tmp/"]
+COPY [ "scripts/owlhwazuh.sh",    "/tmp/" ]
+COPY [ "scripts/owlhui-httpd.sh", "/tmp/" ]
+COPY [ "conf/httpd-owlh.conf",    "/tmp/" ]
 COPY --from=suricata /tmp/suricata.tar.gz /tmp
 COPY --from=zeek     /tmp/zeek.tar.gz     /tmp
 
-RUN mkdir -p /usr/local/owlh/bin /usr/local/owlh/src/owlhnode \
- && mkdir /var/log/suricata \
- && yum -y install which libpcap \
- && cd /tmp \
- && wget ${OWLH_NODE_URL} \
- && tar xzf /tmp/owlhnode.tar.gz -C /usr/local/owlh/src/owlhnode \
- && tar xzf /tmp/suricata.tar.gz -C / \
- && tar xzf /tmp/zeek.tar.gz     -C /usr/local \
- && chmod +x owlhwazuh.sh \
- && ./owlhwazuh.sh \
- && rm -f /tmp/owlhnode.tar.gz \
- && rm -f /tmp/suricata.tar.gz \
- && rm -f /tmp/zeek.tar.gz     \
- && yum clean all \
- && rm -rf /var/cache/yum
+ARG MASTERIP=1.1.1.1
 
-ENV GOPATH=/usr/local/owlh/src/owlhnode
-ENTRYPOINT /usr/local/owlh/src/owlhnode/owlhnode
+RUN mkdir -p /usr/local/owlh/src/{owlhnode,owlhmaster} \
+ && mkdir -p /var/log/suricata \
+ && mkdir -p /var/www/owlh     \
+ && chmod 755 /var/www/owlh    \
+ && yum -y install initscripts which libpcap policycoreutils dbus \
+ && yum -y install httpd mod_ssl php wget \
+ && cd /tmp \
+ && wget repo.owlh.net/current-centos/owlhnode.tar.gz   \
+ && wget repo.owlh.net/current-centos/owlhmaster.tar.gz \
+ && wget repo.owlh.net/current-centos/owlhui.tar.gz     \
+ && tar xzf owlhnode.tar.gz   -C /usr/local/owlh/src/owlhnode   \
+ && tar xzf owlhmaster.tar.gz -C /usr/local/owlh/src/owlhmaster \
+ && tar xzf owlhui.tar.gz     -C /var/www/owlh                  \
+ && tar xzf suricata.tar.gz   -C /                              \
+ && tar xzf zeek.tar.gz       -C /usr/local                     \
+ && chmod +x owlhwazuh.sh \
+ && sed -i "s/<MASTERIP>/$MASTERIP/g" /var/www/owlh/conf/ui.conf \
+ && cp /usr/local/owlh/src/owlhnode/conf/service/owlhnode.service     /etc/systemd/system \
+ && cp /usr/local/owlh/src/owlhmaster/conf/service/owlhmaster.service /etc/systemd/system \
+ && cp /tmp/owlhui-httpd.sh /var/www/owlh/conf/service/owlhui-httpd.sh \
+ && cp /tmp/httpd-owlh.conf /etc/httpd/conf.d/owlh.conf \
+ && /bin/sh /var/www/owlh/conf/service/owlhui-httpd.sh \
+ && rm -f /tmp/owlhnode.tar.gz  \
+ && rm -f /tmp/owlhmaster.tar.gz  \
+ && rm -f /tmp/owlhui.tar.gz      \
+ && rm -f /tmp/suricata.tar.gz    \
+ && rm -f /tmp/zeek.tar.gz        \
+ && rm -f /tmp/owlhwazuh.sh /tmp/owlhui-httpd.sh /tmp/httpd-owlh.conf \
+ && /usr/local/zeek/bin/zeekctl deploy \
+ && yum clean all \
+ && rm -rf /var/cache/yum       \
+ && systemctl enable owlhnode   \
+ && systemctl enable owlhmaster
+# && systemctl daemon reload
+# && systemctl start  owlhnode   \
+# && systemctl start  owlhmaster \
+
+#ENV GOPATH=/usr/local/owlh/src/owlhnode
+#ENTRYPOINT /usr/local/owlh/src/owlhnode/owlhnode
+ENTRYPOINT [ "/usr/sbin/init" ]
