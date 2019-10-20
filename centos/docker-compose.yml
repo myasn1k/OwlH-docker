@@ -1,0 +1,20 @@
+version: "3"
+
+services:
+  owlh:
+    build: .
+    image: owlh:centos7-aio
+    container_name: owlh-centos7-aio
+    environment: 
+      GOPATH: /usr/local/owlh
+    ports:
+      - 8443:443
+      - 50001:50001
+      - 50002:50002
+    volumes:
+      - ./media:/media
+    networks:
+      - monitoring
+
+networks:
+  monitoring:

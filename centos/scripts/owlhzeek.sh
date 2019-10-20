@@ -46,7 +46,3 @@ EOF
 /usr/local/zeek/bin/zeekctl deploy
 
 # (sudo crontab -l ; echo "*/5 * * * * /usr/local/zeek/bin/zeekctl cron ") | crontab -
-
-
-
-
