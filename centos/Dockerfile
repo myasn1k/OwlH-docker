@@ -36,7 +36,8 @@ RUN mkdir -p /usr/local/owlh/bin /usr/local/owlh/src/owlhnode \
  && tar czvf /tmp/suricata.tar.gz /var/log/suricata/                   \
              /etc/suricata /usr/lib/python2.7/site-packages/suricata*  \
              /usr/share/man/man1/suricata.1 /usr/share/doc/suricata    \
-             /usr/bin/suricata* /usr/lib64/libhtp.* /usr/lib64/libnet*
+             /usr/bin/suricata* /usr/lib64/libhtp.* /usr/lib64/libnet* \
+             /usr/lib64/libjanss* 
 
 ################################################################################
 # MULTI-STAGE BUILD: ZEEK
