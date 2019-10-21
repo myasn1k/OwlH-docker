@@ -5,7 +5,7 @@ FROM centos:centos7 as base
 
 RUN yum -y update  \
  && yum -y upgrade \
- && yum -y install wget net-tools initscripts jq PyYAML \
+ && yum -y install wget net-tools tcpdump socat tcpreplay initscripts jq PyYAML \
  && yum clean all \
  && rm -rf /var/cache/yum
 
