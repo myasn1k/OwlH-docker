@@ -64,7 +64,7 @@ COPY [ "scripts/bootstrap.sh",     "/config/bootstrap.sh" ]
 COPY --from=suricata /tmp/suricata.tar.gz /tmp
 COPY --from=zeek     /tmp/zeek.tar.gz     /tmp
 
-ARG MASTERIP=1.1.1.1
+ARG MASTERIP=localhost
 
 STOPSIGNAL SIGRTMIN+3
 
@@ -87,6 +87,7 @@ RUN mkdir -p /usr/local/owlh/src/{owlhnode,owlhmaster} \
  && tar xzf suricata.tar.gz   -C /                              \
  && tar xzf zeek.tar.gz       -C /                              \
  && chmod +x owlhwazuh.sh \
+ && /bin/sh owlhwazuh.sh \
  && sed -i "s/<MASTERIP>/$MASTERIP/g" /var/www/owlh/conf/ui.conf \
  && cp /usr/local/owlh/src/owlhnode/conf/service/owlhnode.service     /etc/systemd/system \
  && cp /usr/local/owlh/src/owlhmaster/conf/service/owlhmaster.service /etc/systemd/system \
