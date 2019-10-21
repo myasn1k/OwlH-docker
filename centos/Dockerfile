@@ -5,7 +5,7 @@ FROM centos:centos7 as base
 
 RUN yum -y update  \
  && yum -y upgrade \
- && yum -y install wget net-tools initscripts jq PyYAML \
+ && yum -y install wget net-tools tcpdump socat tcpreplay initscripts jq PyYAML \
  && yum clean all \
  && rm -rf /var/cache/yum
 
@@ -36,7 +36,8 @@ RUN mkdir -p /usr/local/owlh/bin /usr/local/owlh/src/owlhnode \
  && tar czvf /tmp/suricata.tar.gz /var/log/suricata/                   \
              /etc/suricata /usr/lib/python2.7/site-packages/suricata*  \
              /usr/share/man/man1/suricata.1 /usr/share/doc/suricata    \
-             /usr/bin/suricata* /usr/lib64/libhtp.* /usr/lib64/libnet*
+             /usr/bin/suricata* /usr/lib64/libhtp.* /usr/lib64/libnet* \
+             /usr/lib64/libjanss* 
 
 ################################################################################
 # MULTI-STAGE BUILD: ZEEK
@@ -64,7 +65,7 @@ COPY [ "scripts/bootstrap.sh",     "/config/bootstrap.sh" ]
 COPY --from=suricata /tmp/suricata.tar.gz /tmp
 COPY --from=zeek     /tmp/zeek.tar.gz     /tmp
 
-ARG MASTERIP=1.1.1.1
+ARG MASTERIP=localhost
 
 STOPSIGNAL SIGRTMIN+3
 
@@ -87,6 +88,7 @@ RUN mkdir -p /usr/local/owlh/src/{owlhnode,owlhmaster} \
  && tar xzf suricata.tar.gz   -C /                              \
  && tar xzf zeek.tar.gz       -C /                              \
  && chmod +x owlhwazuh.sh \
+ && /bin/sh owlhwazuh.sh \
  && sed -i "s/<MASTERIP>/$MASTERIP/g" /var/www/owlh/conf/ui.conf \
  && cp /usr/local/owlh/src/owlhnode/conf/service/owlhnode.service     /etc/systemd/system \
  && cp /usr/local/owlh/src/owlhmaster/conf/service/owlhmaster.service /etc/systemd/system \
